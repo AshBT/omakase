@@ -1,0 +1,42 @@
+[Unit]
+Description=Kafka Broker etcd registration.
+
+# Requirements
+Requires=etcd.service
+Requires=docker.service
+Requires=kafka-broker@%i.service
+
+# Dependency ordering and binding
+After=etcd.service
+After=docker.service
+After=kafka-broker@%i.service
+BindsTo=kafka-broker@%i.service
+
+[Service]
+
+# Get CoreOS environment variables
+EnvironmentFile=/etc/environment
+
+# Start
+## Repeatedly tests whether a Kafka broker is listening on port (9092), and updates etcd accordingly.
+
+ExecStart=/bin/bash -c '\
+  while true; do \
+    curl -f ${COREOS_PRIVATE_IPV4}:9092; \
+    if [ $? -eq 56 ]; then \
+    	etcdctl set /services/kafka/${COREOS_PRIVATE_IPV4}:9092 ${COREOS_PRIVATE_IPV4}:9092 --ttl 30; \
+        etcdctl set /public/kafka ${COREOS_PUBLIC_IPV4} --ttl 30; \
+    else \
+      echo "clearing kafka"; \
+      etcdctl rm /services/kafka/${COREOS_PRIVATE_IPV4}:9092; \
+      etcdctl rm /public/kafka; \
+    fi; \
+    sleep 20; \
+  done'
+
+# Stop
+ExecStop=/usr/bin/etcdctl rm /services/kafka/${COREOS_PRIVATE_IPV4}:9092
+
+[X-Fleet]
+# Schedule on the same machine as the associated Kafka broker service.
+X-ConditionMachineOf=kafka-broker@%i.service

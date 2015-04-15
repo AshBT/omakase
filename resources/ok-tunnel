@@ -1,0 +1,2 @@
+#/usr/bin/env sh
+ssh -i ~/.ok/global-key -D 2323 -vnN core@`cat ~/.ok/$1/ip`

@@ -1,0 +1,29 @@
+[Unit]
+Description=Private Docker Registry for Omakase
+After=docker.service
+After=etcd.service
+After=consul-server.service
+
+[Service]
+Restart=always
+RestartSec=60
+
+EnvironmentFile=/etc/environment
+ExecStartPre=-/usr/bin/docker kill registry
+ExecStartPre=-/usr/bin/docker rm registry
+ExecStartPre=/usr/bin/docker pull registry
+
+ExecStart=/bin/sh -c "/usr/bin/docker run \
+    --rm \
+    -e SETTINGS_FLAVOR=s3 \
+    -e AWS_BUCKET=omakase-s3 \
+    -e STORAGE_PATH=/docker-registry \
+    -e AWS_KEY=#AWS_KEY# \
+    -e AWS_SECRET=#AWS_SECRET# \
+    -e SERVICE_NAME=ok-registry \
+    -e SERVICE_TAGS=http \
+    -P \
+    --name=registry \
+    registry"
+
+ExecStop=/usr/bin/docker stop registry

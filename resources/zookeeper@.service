@@ -1,0 +1,36 @@
+[Unit]
+Description=Zookeeper
+After=docker.service
+After=consul-server.service
+
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+ExecStartPre=-/usr/bin/docker kill zookeeper%i
+ExecStartPre=-/usr/bin/docker rm zookeeper%i
+ExecStartPre=/usr/bin/docker pull mbabineau/zookeeper-exhibitor
+
+ExecStart=/usr/bin/docker run \
+	--rm \
+	--name zookeeper%i \
+	--publish 2181:2181 \
+	--publish 2888:2888 \
+	--publish 3888:3888 \
+	--publish 8181:8181 \
+	--env S3_BUCKET=omakase-s3 \
+	--env S3_PREFIX=zookeeper \
+	--env AWS_ACCESS_KEY_ID=#AWS_KEY# \
+	--env AWS_SECRET_ACCESS_KEY=#AWS_SECRET# \
+	--env AWS_REGION=us-west-1 \
+	--env HOSTNAME=zookeeper%i \
+	--env SERVICE_NAME=zookeeper%i \
+	--env SERVICE_TAGS=zookeeper \
+	mbabineau/zookeeper-exhibitor
+
+ExecStop=/usr/bin/docker stop zookeeper%i
+Restart=always
+RestartSec=60
+
+[X-Fleet]
+Conflicts=zookeeper@*.service

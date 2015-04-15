@@ -1,0 +1,39 @@
+[Unit]
+Description=ZooKeeper server etcd registration
+
+# Requirements
+Requires=etcd.service
+Requires=zookeeper@%i.service
+
+# Dependency ordering and binding
+After=etcd.service
+After=zookeeper@%i.service
+BindsTo=zookeeper@%i.service
+
+[Service]
+
+# Get CoreOS environment variables
+EnvironmentFile=/etc/environment
+
+# Start
+## Repeatedly tests whether the ZooKeeper service is listening on the client port (2181), and updates etcd accordingly.
+
+ExecStart=/bin/bash -c '\
+  while true; do \
+    curl -f ${COREOS_PRIVATE_IPV4}:2181; \
+    if [ $? -eq 52 ]; then \
+      etcdctl set /services/zookeeper/${COREOS_PRIVATE_IPV4}:2181 ${COREOS_PRIVATE_IPV4}:2181 --ttl 30; \
+      etcdctl set /public/zookeeper ${COREOS_PUBLIC_IPV4} --ttl 30; \
+    else \
+      echo "clearing zookeeper"; etcdctl rm /services/zookeeper/${COREOS_PRIVATE_IPV4}; \
+      etcdctl rm /public/zookeeper; \
+    fi; \
+    sleep 20; \
+  done'
+
+# Stop
+ExecStop=/usr/bin/etcdctl rm /services/zookeeper/${COREOS_PRIVATE_IPV4}
+
+[X-Fleet]
+# Schedule on the same machine as the associated ZooKeeper service
+X-ConditionMachineOf=zookeeper@%i.service

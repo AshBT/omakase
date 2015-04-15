@@ -1,0 +1,2 @@
+#/usr/bin/env sh
+ssh -i ~/.ok/global-key core@`cat ~/.ok/$1/ip`

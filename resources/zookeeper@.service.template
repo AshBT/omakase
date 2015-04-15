@@ -1,0 +1,32 @@
+[Unit]
+Description=zookeeper
+After=docker.service
+After=consul-server.service
+
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+ExecStartPre=-/usr/bin/docker kill zookeeper-%i
+ExecStartPre=-/usr/bin/docker rm zookeeper-%i
+ExecStartPre=/usr/bin/docker pull nrandell/zookeeper-centos
+ExecStart=/usr/bin/docker run \
+	--rm \
+	--name zookeeper-%i \
+	--env ZK_SERVER_NUMBER=%i \
+	--hostname zookeeper-%i \
+	--env ZK_SERVERS=#ZK_SERVERS# \
+	--publish 2181:2181 \
+	--publish 2888:2888 \
+	--publish 3888:3888 \
+	--volume /var/zookeeper:/data \
+	--env SERVICE_NAME=zookeeper-%i \
+	--env SERVICE_TAGS=zookeeper \
+	nrandell/zookeeper-centos
+
+ExecStop=/usr/bin/docker stop zookeeper-%i
+Restart=always
+RestartSec=60
+
+[X-Fleet]
+MachineID=#MACHINE_ID#

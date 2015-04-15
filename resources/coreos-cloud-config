@@ -1,0 +1,152 @@
+#cloud-config
+
+coreos:
+    etcd:
+        # generate a new token for each unique cluster from
+        # https://discovery.etcd.io/new
+        discovery: %s
+        # multi-region and multi-cloud deployments need to use
+        # $public_ipv4
+        addr: $private_ipv4:4001
+        peer-addr: $private_ipv4:7001
+    fleet:
+        public-ip: $private_ipv4
+        # at the moment, all machines are "servers"
+        # we'll have to figure out how to change this later..
+        metadata: "region=us-west,pub-ip=$public_ipv4,consul_role=server"
+    units:
+        - name: etcd.service
+          command: start
+        - name: fleet.socket
+          command: start
+          drop-ins:
+          - name: 30-ListenStream.conf
+            content: |
+              [Socket]
+              ListenStream=127.0.0.1:49153
+        - name: fleet.service
+          command: start
+        - name: docker.service
+          command: restart
+          drop-ins:
+          - name: 50-insecure-registry.conf
+            content: |
+              [Service]
+              Environment='DOCKER_OPTS=--insecure-registry=172.31.0.0/16 --dns=10.0.42.1 --bip=10.0.42.1/16 --dns-search=service.consul'
+        - name: consul-server.service
+          command: start
+          content: |
+            [Unit]
+            Description=Consul Server Agent
+            After=docker.service
+            After=etcd.service
+            [Service]
+            Restart=always
+            RestartSec=60
+            ExecStartPre=-/usr/bin/docker kill consul
+            ExecStartPre=-/usr/bin/docker rm consul
+            ExecStartPre=/usr/bin/docker pull progrium/consul
+            ExecStart=/bin/sh -c "eval $(. /etc/environment; /usr/bin/docker run --rm progrium/consul cmd:run $COREOS_PRIVATE_IPV4 -e SERVICE_IGNORE=true -v /var/run/docker.sock:/var/run/docker.sock)"
+            ExecStop=/usr/bin/docker stop consul
+            [X-Fleet]
+            MachineMetadata=consul_role=server
+        - name: consul-server-announcer.service
+          command: start
+          content: |
+            [Unit]
+            Description=Consul Server Announcer
+            PartOf=consul-server.service
+            After=consul-server.service
+            [Service]
+            Restart=always
+            RestartSec=30
+            EnvironmentFile=/etc/environment
+            ExecStart=/bin/sh -c "while true; do etcdctl set /consul/bootstrap/machines/$(cat /etc/machine-id) $COREOS_PRIVATE_IPV4 --ttl 60; /usr/bin/docker exec consul consul join $(etcdctl get $(etcdctl ls /consul/bootstrap/machines | tail -1)); sleep 45; done"
+            ExecStop=/bin/sh -c "/usr/bin/etcdctl rm /consul/bootstrap/machines/$(cat /etc/machine-id)"
+            [X-Fleet]
+            MachineMetadata=consul_role=server
+        - name: consul-server-registrator.service
+          command: start
+          content: |
+            [Unit]
+            Description=Registrator
+            PartOf=consul-server.service
+            After=consul-server.service
+            [Service]
+            Restart=always
+            RestartSec=60
+            ExecStartPre=-/usr/bin/docker kill registrator
+            ExecStartPre=-/usr/bin/docker rm registrator
+            ExecStartPre=/usr/bin/docker pull progrium/registrator
+            ExecStart=/bin/sh -c ". /etc/environment; /usr/bin/docker run --name registrator -h registrator -v /var/run/docker.sock:/tmp/docker.sock  progrium/registrator consul://$COREOS_PRIVATE_IPV4:8500"
+            ExecStop=/usr/bin/docker stop registrator
+            [X-Fleet]
+            MachineMetadata=consul_role=server
+        - name: consul-http-router.service
+          command: start
+          content: |
+            [Unit]
+            Description=consul-http-router
+            PartOf=consul-server.service
+            After=consul-server.service
+            [Service]
+            Restart=always
+            RestartSec=10
+            EnvironmentFile=/etc/environment
+            ExecStartPre=-/usr/bin/docker kill consul-http-router
+            ExecStartPre=-/usr/bin/docker rm consul-http-router
+            ExecStartPre=/usr/bin/docker pull cargonauts/consul-http-router
+            ExecStart=/bin/sh -c "/usr/bin/docker run --rm \
+                --name consul-http-router \
+                -p $COREOS_PRIVATE_IPV4:80:80 \
+                -v /home/core/consul-http-router:/router \
+                cargonauts/consul-http-router \
+                -consul consul.service.consul:8500 \
+                -template /router/nginx.ctmpl:/etc/nginx/nginx.conf:/reload.sh"
+            ExecStop=/usr/bin/docker stop consul-http-router
+write_files:
+    - path: /home/core/consul-http-router/nginx.ctmpl
+      permissions: 0644
+      owner: core
+      content: |
+        events {
+            worker_connections 1024;
+        }
+        http {
+        {{range $index, $service := services}}{{range $tag, $services := service $service.Name | byTag}}{{if eq "http" $tag}}
+            upstream {{$service.Name}} {
+                least_conn;
+                {{range $services}}server {{.Address}}:{{.Port}} max_fails=3 fail_timeout=60 weight=1;
+                {{end}}
+            }
+            server {
+                listen          80;
+                server_name     {{$service.Name}}.*;
+                client_max_body_size 0;
+                chunked_transfer_encoding on;
+                location / {
+                    proxy_pass          http://{{$service.Name}};
+                    proxy_set_header    X-Forwarded-Host    $host;
+                    proxy_set_header    X-Forwarded-For     $proxy_add_x_forwarded_for;
+                    proxy_set_header    Host                $host;
+                    proxy_set_header    X-Real-IP           $remote_addr;
+                    proxy_http_version                      1.1;
+                    proxy_set_header    Upgrade             $http_upgrade;
+                    proxy_set_header    Connection          "upgrade";
+                }
+            }
+        {{end}}{{end}}{{end}}
+            server {
+                listen  80 default_server;
+                server_name _;
+                return 444;
+            }
+        }
+# Allows host machines to use the Consul DNS
+    - path: /etc/resolv.conf
+      permissions: 0644
+      owner: root
+      content: |
+        nameserver 10.0.42.1
+        search service.consul
+        nameserver 8.8.8.8

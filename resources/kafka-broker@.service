@@ -1,0 +1,40 @@
+[Unit]
+Description=Kafka Broker for multi-broker deployments.
+
+# Requirements
+Requires=docker.service
+
+# Dependency ordering and binding
+After=docker.service
+After=zookeeper@.service
+After=consul-server.service
+
+
+[Service]
+# Let processes take awhile to start up (for first run Docker containers)
+TimeoutStartSec=0
+
+# Get CoreOS environmental variables
+EnvironmentFile=/etc/environment
+
+## Directives with "=-" are allowed to fail without consequence.
+ExecStartPre=-/usr/bin/docker kill kafka%i
+ExecStartPre=-/usr/bin/docker rm kafka%i
+ExecStartPre=/usr/bin/docker pull wurstmeister/kafka
+
+ExecStart=/usr/bin/docker run --name kafka%i \
+    -p 9092:9092 \
+    -e KAFKA_ADVERTISED_HOST_NAME=kafka%i \
+    -e KAFKA_ZOOKEEPER_CONNECT=zookeeper1:2181,zookeeper2:2181,zookeeper3:2181 \
+    -e KAFKA_BROKER_ID=%i \
+    -e SERVICE_NAME=kafka%i \
+    -e SERVICE_TAGS=kafka \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    wurstmeister/kafka
+
+ExecStop=/usr/bin/docker stop kafka%i
+Restart=always
+RestartSec=60
+
+[X-Fleet]
+Conflicts=kafka-broker@*.service

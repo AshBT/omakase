@@ -1,0 +1,33 @@
+[Unit]
+Description=Nginx reverse proxy for exposed services
+
+# Requirements
+Requires=etcd.service
+Requires=docker.service
+
+# Dependency ordering
+After=etcd.service
+After=docker.service
+
+[Service]
+# Let the process take some time to start
+TimeoutStartSec=0
+
+KillMode=none
+
+# Get CoreOS environment variables
+EnvironmentFile=/etc/environment
+
+ExecStartPre=-/usr/bin/docker kill nginx-proxy
+ExecStartPre=-/usr/bin/docker rm nginx-proxy
+# build image if theres none
+ExecStartPre=/bin/sh -c "/usr/bin/docker images | grep nginx-confd || /usr/bin/docker build -t nginx-confd github.com/echu/nginx-confd.git"
+ExecStart=/usr/bin/docker run --name=nginx-proxy -e confdKey=/apps -e HOST_IP=${COREOS_PRIVATE_IPV4} -e PUBLIC_IP=${COREOS_PUBLIC_IPV4} -p 80:80 nginx-confd
+
+# Stop
+ExecStop=/usr/bin/docker stop nginx-proxy
+
+[X-Fleet]
+# Schedule the proxy on all machines so any machine can route to the reverse
+# proxies.
+Global=true

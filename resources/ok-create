@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+echo "Connecting to cluster $1 to make git repos."
+
+REPO="~/repos/$2.git"
+CMDS="mkdir -p $REPO && \
+      cd $REPO && \
+      git init --bare"
+
+ssh -i ~/.ok/global-key core@`cat ~/.ok/$1/ip` "$CMDS"
+
+echo "Installing git post-commit hook"
+
+HOOK='export REGISTRY="ok-registry.service.consul"\n
+export GIT_WORK_TREE="$HOME/'$2'"\n
+rm -rf $GIT_WORK_TREE\n
+mkdir -p $GIT_WORK_TREE\n
+git checkout -f\n
+echo "Attempting to pull $REGISTRY/'$2' in case it already exists."\n
+docker pull $REGISTRY/'$2' || echo "No such image exists on registry. Building from scratch..."\n
+docker build --force-rm=true -t $REGISTRY/'$2' $GIT_WORK_TREE\n
+docker push $REGISTRY/'$2
+
+echo $HOOK | ssh -i ~/.ok/global-key core@`cat ~/.ok/$1/ip` "cat > $REPO/hooks/post-receive && chmod +x $REPO/hooks/post-receive"
+
+echo "Adding $1 remote"
+
+git remote remove $1 || echo "No remote named $1 to remove. Skipping."
+git remote add $1 core@`cat ~/.ok/$1/ip`:$REPO
