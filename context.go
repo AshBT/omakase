@@ -3,6 +3,7 @@ package omakase
 import (
   "fmt"
   "os"
+  "log"
 )
 
 type Context struct {
@@ -23,7 +24,9 @@ func NewContext(e Discovery, name string, workingdir string) (*Context) {
 func NewEtcdContext(name string) (*Context) {
   // Context creator for default etcd discovery
   etcd := &Etcd {"https://discovery.etcd.io"}
-  cwd, err := os.Getwd()
-  check(err)
+  cwd, err := os.Getwd();
+  if err != nil {
+    log.Fatal(err)
+  }
   return NewContext(etcd, name, cwd)
 }
