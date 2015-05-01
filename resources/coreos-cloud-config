@@ -17,13 +17,6 @@ coreos:
     units:
         - name: etcd.service
           command: start
-        - name: fleet.socket
-          command: start
-          drop-ins:
-          - name: 30-ListenStream.conf
-            content: |
-              [Socket]
-              ListenStream=127.0.0.1:49153
         - name: fleet.service
           command: start
         - name: docker.service
