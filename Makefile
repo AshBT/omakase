@@ -17,7 +17,7 @@ build: bindata.go
 	sh scripts/build.sh
 
 test: bindata.go
-	go test -v
+	go test -v -cover ./...
 
 clean:
 	rm bindata.go omakase
