@@ -18,11 +18,19 @@ func TestNewContext(t *testing.T) {
     Expect(ctx.ClusterName).
     Equals("bar")
 
+  e.Label("ClusterRoot").
+    Expect(ctx.ClusterRoot).
+    Equals("test_dir/bar")
+
   e.Label("PublicKeyPath").
     Expect(ctx.PublicKeyPath).
-    Equals("my/fake/home/bar/bar.pub")
+    Equals("test_dir/bar/bar.pub")
+
+  e.Label("PrivateKeyPath").
+    Expect(ctx.PrivateKeyPath).
+    Equals("test_dir/bar/bar")
 
   e.Label("CloudConfigPath").
     Expect(ctx.CloudConfigPath).
-    Equals("my/fake/home/bar/cloud-config")
+    Equals("test_dir/bar/cloud-config")
 }
