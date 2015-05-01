@@ -5,10 +5,11 @@ import (
   "text/template"
   "bytes"
   "os"
+  "github.com/qadium/omakase/expectations"
 )
 
 func TestGetAssetName(t *testing.T) {
-  e := Expectations(t)
+  e := expectations.New(t)
   e.Expect(getAssetName("templates/README.md")).
     Equals("README.md")
 }
@@ -27,7 +28,7 @@ my/fake/home/bar/cloud-config`
 
   buf := new(bytes.Buffer)
   ctx := TestContext()
-  e := Expectations(t)
+  e := expectations.New(t)
 
   tmpl := createTemplate("doesn't matter")
   tmpl = template.Must(tmpl.Parse(data))
@@ -43,7 +44,7 @@ func TestCreate(t *testing.T) {
 
   defer os.RemoveAll("bar")
 
-  e := Expectations(t)
+  e := expectations.New(t)
   e.Label("README.md").
     Expect("bar/README.md").
     FileExists()
