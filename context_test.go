@@ -2,24 +2,24 @@ package omakase
 
 import "testing"
 
-type MockEtcd struct {}
-
-func (e *MockEtcd) discover() string {
-  return "foobar"
-}
-
 func TestNewContext(t *testing.T) {
-  // ensure that MockEtcd implements the discovery interface
-  // if it doesn't, the compiler will crap out.
-  var e Discovery = (*MockEtcd)(nil)
+  ctx := TestContext()
 
-  ctx := NewContext(e, "bar")
+  e := Expectations(t)
 
-  if ctx.DiscoveryURL != "foobar" {
-    t.Errorf("DiscoveryURL: Expected 'foobar' but got '%s' instead.", ctx.DiscoveryURL)
-  }
+  e.Label("DiscoveryURL").
+    Expect(ctx.DiscoveryURL).
+    Equals("foobar")
 
-  if ctx.ClusterName != "bar" {
-    t.Errorf("ClusterName: Expected 'bar' but got '%s' instead.", ctx.ClusterName)
-  }
+  e.Label("ClusterName").
+    Expect(ctx.ClusterName).
+    Equals("bar")
+
+  e.Label("PublicKeyPath").
+    Expect(ctx.PublicKeyPath).
+    Equals("my/fake/home/bar/bar.pub")
+
+  e.Label("CloudConfigPath").
+    Expect(ctx.CloudConfigPath).
+    Equals("my/fake/home/bar/cloud-config")
 }
