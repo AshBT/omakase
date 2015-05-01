@@ -13,7 +13,7 @@ func TestGetAssetName(t *testing.T) {
   assetName, err := getAssetName("templates/README.md")
   e.Expect(err).
     Equals(nil)
-    
+
   e.Expect(assetName).
     Equals("README.md")
 }
@@ -22,13 +22,17 @@ func TestCreateTemplate(t *testing.T) {
   data := `# test template {{ ignore these }}
 [[ .DiscoveryURL ]]
 [[ .ClusterName ]]
+[[ .ClusterRoot ]]
 [[ .PublicKeyPath ]]
+[[ .PrivateKeyPath ]]
 [[ .CloudConfigPath ]]`
   expected := `# test template {{ ignore these }}
 foobar
 bar
-my/fake/home/bar/bar.pub
-my/fake/home/bar/cloud-config`
+test_dir/bar
+test_dir/bar/bar.pub
+test_dir/bar/bar
+test_dir/bar/cloud-config`
 
   buf := new(bytes.Buffer)
   ctx := TestContext()
@@ -45,31 +49,30 @@ my/fake/home/bar/cloud-config`
 func TestCreate(t *testing.T) {
   ctx := TestContext()
   Create(ctx)
-
-  defer os.RemoveAll("bar")
+  defer os.RemoveAll("test_dir")
 
   e := expectations.New(t)
   e.Label("README.md").
-    Expect("bar/README.md").
+    Expect("test_dir/bar/README.md").
     FileExists()
 
   e.Label("cloud-config").
-    Expect("bar/cloud-config").
+    Expect("test_dir/bar/cloud-config").
     FileExists()
 
-  e.Label("bar.tf").
-    Expect("bar/bar.tf").
+  e.Label("omakase.tf").
+    Expect("test_dir/bar/omakase.tf").
     FileExists()
 
   e.Label("variables.tf").
-    Expect("bar/variables.tf").
+    Expect("test_dir/bar/variables.tf").
     FileExists()
 
   e.Label("Public key: bar.pub").
-    Expect("bar/bar.pub").
+    Expect("test_dir/bar/bar.pub").
     FileExists()
 
   e.Label("Private key: bar").
-    Expect("bar/bar").
+    Expect("test_dir/bar/bar").
     FileExists()
 }
