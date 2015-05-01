@@ -18,7 +18,7 @@ build: bindata.go
 	cd cmd/omakase && \
 	go build -v && \
 	cd ../.. && \
-	cp cmd/omakase/omakase .
+	mv cmd/omakase/omakase .
 
 test:
 	go test -v
