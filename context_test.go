@@ -1,11 +1,14 @@
 package omakase
 
-import "testing"
+import (
+  "testing"
+  "github.com/qadium/omakase/expectations"
+)
 
 func TestNewContext(t *testing.T) {
   ctx := TestContext()
 
-  e := Expectations(t)
+  e := expectations.New(t)
 
   e.Label("DiscoveryURL").
     Expect(ctx.DiscoveryURL).
