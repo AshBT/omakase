@@ -13,16 +13,16 @@ type testWrapper struct {
 
 func New(t *testing.T) (*testWrapper){
   // Return a new expectation structure
-  return &testWrapper{t, "", ""}
+  return &testWrapper{t, "", nil}
 }
 
 // Simple string comparison for testing
 func (r *testWrapper) Equals(other interface{}) {
   if r.expect != other {
     if r.label != "" {
-      r.t.Errorf("%s: Expected '%s' but got '%s' instead.", r.label, r.expect, other)
+      r.t.Errorf("%s: Expected '%v' but got '%v' instead.", r.label, r.expect, other)
     } else {
-      r.t.Errorf("Expected '%s' but got '%s' instead.", r.expect, other)
+      r.t.Errorf("Expected '%v' but got '%v' instead.", r.expect, other)
     }
   }
 }
@@ -31,7 +31,7 @@ func (r *testWrapper) FileExists() {
   // r.expect is an interface{} (basically, a void *[?])
   // r.expect.(string) is a type assertion saying that it should be a string.
   if _, err := os.Stat(r.expect.(string)); os.IsNotExist(err) {
-    r.t.Errorf("no such file or directory: %s", r.expect)
+    r.t.Errorf("No such file or directory: %s", r.expect)
   }
 }
 
