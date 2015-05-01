@@ -10,7 +10,11 @@ import (
 
 func TestGetAssetName(t *testing.T) {
   e := expectations.New(t)
-  e.Expect(getAssetName("templates/README.md")).
+  assetName, err := getAssetName("templates/README.md")
+  e.Expect(err).
+    Equals(nil)
+    
+  e.Expect(assetName).
     Equals("README.md")
 }
 
