@@ -20,9 +20,9 @@ func New(t *testing.T) (*testWrapper){
 func (r *testWrapper) Equals(other interface{}) {
   if r.expect != other {
     if r.label != "" {
-      r.t.Errorf("%s: Expected '%v' but got '%v' instead.", r.label, r.expect, other)
+      r.t.Errorf("%s: Expected '%v' but got '%v' instead.", r.label, other, r.expect)
     } else {
-      r.t.Errorf("Expected '%v' but got '%v' instead.", r.expect, other)
+      r.t.Errorf("Expected '%v' but got '%v' instead.", other, r.expect)
     }
   }
 }
