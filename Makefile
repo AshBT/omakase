@@ -1,3 +1,4 @@
+# Whether to build debug
 GO_BINDATA_DEBUG=false
 
 .PHONY: build debug release all clean test
@@ -10,15 +11,10 @@ release: GO_BINDATA_DEBUG=false
 release: build
 
 bindata.go:
-	echo $(GO_BINDATA_DEBUG) && \
 	go-bindata -debug=$(GO_BINDATA_DEBUG) -pkg="omakase" templates
 
 build: bindata.go
-	go build -v && \
-	cd cmd/omakase && \
-	go build -v && \
-	cd ../.. && \
-	mv cmd/omakase/omakase .
+	sh scripts/build.sh
 
 test:
 	go test -v
