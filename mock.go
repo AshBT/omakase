@@ -12,5 +12,5 @@ func TestContext() (* Context) {
   // if it doesn't, the compiler will crap out.
   var d Discovery = (*MockEtcd)(nil)
 
-  return NewContext(d, "bar", "my/fake/home")
+  return NewContext(d, "bar", "test_dir")
 }
