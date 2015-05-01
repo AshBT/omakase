@@ -10,15 +10,26 @@ type Context struct {
   // capitalized members are accessible in templates
   DiscoveryURL    string    // discovery url for this context
   ClusterName     string    // the cluster name
+  ClusterRoot     string    // the directory for the cluster
   PublicKeyPath   string    // absolute path to the public key for ssh
+  PrivateKeyPath  string    // absolute path to the private key for ssh
   CloudConfigPath string    // absolute path to generated cloud-config
 }
 
-func NewContext(e Discovery, name string, workingdir string) (*Context) {
+func NewContext(e Discovery, name string, workingDir string) (*Context) {
   // Generic context creator
-  cloudConfig := fmt.Sprintf("%s/%s/cloud-config", workingdir, name)
-  pubkeyPath := fmt.Sprintf("%s/%s/%s.pub", workingdir, name, name)
-  return &Context{e.discover(), name, pubkeyPath, cloudConfig}
+  clusterRoot := fmt.Sprintf("%s/%s", workingDir, name)
+  cloudConfig := fmt.Sprintf("%s/cloud-config", clusterRoot)
+  pubkeyPath := fmt.Sprintf("%s/%s.pub", clusterRoot, name)
+  privkeyPath := fmt.Sprintf("%s/%s", clusterRoot, name)
+  return &Context{
+    DiscoveryURL: e.discover(),
+    ClusterName: name,
+    ClusterRoot: clusterRoot,
+    PublicKeyPath: pubkeyPath,
+    PrivateKeyPath: privkeyPath,
+    CloudConfigPath: cloudConfig,
+  }
 }
 
 func NewEtcdContext(name string) (*Context) {
