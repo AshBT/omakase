@@ -3,6 +3,7 @@ package omakase
 import (
   "net/http"
   "io/ioutil"
+  "log"
 )
 
 type Discovery interface {
@@ -15,11 +16,15 @@ type Etcd struct {
 
 func (e *Etcd) discover() string {
   resp, err := http.Get(e.httpEndpoint + "/new")
-  check(err)
+  if err != nil {
+    log.Fatal(err)
+  }
 
   defer resp.Body.Close()
   contents, err := ioutil.ReadAll(resp.Body)
-  check(err)
+  if err != nil {
+    log.Fatal(err)
+  }
 
   return string(contents)
 }
