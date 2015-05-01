@@ -5,7 +5,7 @@ provider "aws" {
 
 # this is the key pair used to access our instance
 resource "aws_key_pair" "core" {
-  key_name = "coreos-key"
+  key_name = "[[ .ClusterName ]]-key"
   public_key = "${file("[[ .PublicKeyPath ]]")}"
 }
 
