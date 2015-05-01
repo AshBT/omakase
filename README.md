@@ -5,6 +5,9 @@ Maybe we'll have a registry, maybe we won't.
 
 For now, Omakase comes with a default `cloud-config` for starting your own AWS cluster with CoreOS and properly sets up needed values.
 
+## Installation
+Requires `go-bindata` and `go` obviously.
+
 ## Hello, world
 Create a new folder, say, `hello` and open a new YAML file: `hello.yml`. Copy
 ```YAML
