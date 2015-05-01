@@ -2,6 +2,7 @@ package omakase
 
 import (
   "text/template"
+  "github.com/qadium/omakase/ssh"
   "os"
   "log"
   "io"
@@ -9,12 +10,52 @@ import (
 )
 
 func Create(ctx *Context) {
-  log.Printf("==> Creating folder %s\n", ctx.ClusterName)
-  os.Mkdir(ctx.ClusterName, 0700)
-  log.Printf("==> Specializing templates for %s\n", ctx.ClusterName)
+  log.Printf("==> Creating folder '%s'\n", ctx.ClusterRoot)
+  err := os.MkdirAll(ctx.ClusterRoot, 0700)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  log.Printf("==> Specializing templates for '%s'\n", ctx.ClusterName)
   if err := handleTemplates(ctx); err != nil {
     log.Fatal(err)
   }
+
+  log.Printf("==> Creating SSH key pairs for '%s'\n", ctx.ClusterName)
+  keypair, err := ssh.GenerateKeyPair()
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  log.Printf("==> Writing SSH key pairs for '%s'\n", ctx.ClusterName)
+  if err := writeKeyPair(ctx, keypair); err != nil {
+    log.Fatal(err)
+  }
+}
+
+func writeKeyPair(ctx *Context, keyPair *ssh.KeyPair) error {
+  log.Printf("    Writing public key '%s'", ctx.PublicKeyPath)
+  file, err := os.Create(ctx.PublicKeyPath)
+  defer file.Close()
+  if err != nil {
+    return err
+  }
+
+  if err := keyPair.WritePublicKey(file); err != nil {
+    return err
+  }
+
+  log.Printf("    Writing private key '%s'", ctx.PrivateKeyPath)
+  file, err = os.Create(ctx.PrivateKeyPath)
+  defer file.Close()
+  if err != nil {
+    return err
+  }
+
+  if err := keyPair.WritePrivateKey(file); err != nil {
+    return err
+  }
+  return nil
 }
 
 func handleTemplates(c *Context) error {
@@ -42,8 +83,9 @@ func handleTemplates(c *Context) error {
     }
 
     // create a file for the template
-    filename := fmt.Sprintf("%s/%s", c.ClusterName, name)
+    filename := fmt.Sprintf("%s/%s", c.ClusterRoot, name)
     file, err := os.Create(filename)
+    defer file.Close()
     if err != nil {
       return err
     }
