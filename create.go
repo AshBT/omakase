@@ -52,6 +52,11 @@ func writeKeyPair(ctx *Context, keyPair *ssh.KeyPair) error {
     return err
   }
 
+  // make the private key read only for this user
+  if err := file.Chmod(0600); err != nil {
+    return err
+  }
+
   if err := keyPair.WritePrivateKey(file); err != nil {
     return err
   }
