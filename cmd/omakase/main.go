@@ -8,10 +8,11 @@ import (
 )
 
 func main() {
+  versionString := versionString()
   app := cli.NewApp()
   app.Name = "omakase"
   app.Usage = "a command line tool to manage CoreOS clusters"
-  app.Version = "0.0.1-alpha"
+  app.Version = versionString
   app.Commands = []cli.Command {
     {
       Name:      "create",
@@ -27,6 +28,23 @@ func main() {
         ok.Create(ctx)
       },
     },
+    {
+      Name:   "version",
+      Usage:  "more detailed version information for omakase",
+      Action: func(c *cli.Context) {
+        fmt.Println("Omakase version:", versionString)
+        fmt.Println("Git commit:", GitCommit)
+      },
+    },
   }
   app.Run(os.Args)
+}
+
+
+func versionString() string {
+  versionString := Version
+  if VersionPrerelease != "" {
+    versionString += "-" + VersionPrerelease
+  }
+  return versionString
 }
