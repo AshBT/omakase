@@ -16,7 +16,7 @@ bindata.go:
 build: bindata.go
 	sh scripts/build.sh
 
-test:
+test: bindata.go
 	go test -v
 
 clean:
