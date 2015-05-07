@@ -10,14 +10,17 @@ debug: build test
 release: GO_BINDATA_DEBUG=false
 release: build test
 
-bindata.go:
-	go-bindata -debug=$(GO_BINDATA_DEBUG) -pkg="omakase" templates
+data/data.go:
+	mkdir -p data && \
+	go-bindata -debug=$(GO_BINDATA_DEBUG) -pkg="data" -o="data/data.go" templates
 
-build: bindata.go
+build: data/data.go
 	sh scripts/build.sh
 
-test: bindata.go
+test: data/data.go
 	go test -cover ./...
 
 clean:
-	rm bindata.go omakase
+	rm data/* omakase && \
+	rmdir data && \
+	go clean
