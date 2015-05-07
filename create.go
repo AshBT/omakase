@@ -3,6 +3,7 @@ package omakase
 import (
   "text/template"
   "github.com/qadium/omakase/ssh"
+  "github.com/qadium/omakase/data"
   "os"
   "log"
   "io"
@@ -64,7 +65,7 @@ func writeKeyPair(ctx *Context, keyPair *ssh.KeyPair) error {
 }
 
 func handleTemplates(c *Context) error {
-  for _, asset := range AssetNames() {
+  for _, asset := range data.AssetNames() {
     name, err := getAssetName(asset)
     if err != nil {
       return err
@@ -75,7 +76,7 @@ func handleTemplates(c *Context) error {
     tmpl := createTemplate(name)
 
     // get the template string
-    bytes, err := Asset(asset)
+    bytes, err := data.Asset(asset)
     if err != nil {
       return err
     }
@@ -111,7 +112,7 @@ func handleTemplate(c *Context, tmpl *template.Template, writer io.Writer) error
 }
 
 func getAssetName(asset string) (string, error) {
-  info, err := AssetInfo(asset)
+  info, err := data.AssetInfo(asset)
   if err != nil {
     return "", err
   }
