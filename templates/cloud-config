@@ -13,7 +13,7 @@ coreos:
         public-ip: $private_ipv4
         # at the moment, all machines are "servers"
         # we'll have to figure out how to change this later..
-        metadata: "region=us-west,pub-ip=$public_ipv4,consul_role=server"
+        metadata: "region=${region},pub-ip=$public_ipv4,consul_role=server"
     units:
         - name: etcd.service
           command: start
@@ -26,6 +26,16 @@ coreos:
             content: |
               [Service]
               Environment='DOCKER_OPTS=--insecure-registry=172.31.0.0/16 --dns=10.0.42.1 --bip=10.0.42.1/16 --dns-search=service.consul'
+        # techincally, we only need to mount on DB instances
+        - name: var-lib-neo4j.mount
+          command: start
+          content: |
+            [Mount]
+            What=/dev/xvdj
+            Where=/var/lib/neo4j
+            Type=ext3
+        # for single-node deploys, we EXPECT 1 node, but it should
+        # correspond to the number of servers we expect in the cluster
         - name: consul-server.service
           command: start
           content: |
@@ -39,7 +49,7 @@ coreos:
             ExecStartPre=-/usr/bin/docker kill consul
             ExecStartPre=-/usr/bin/docker rm consul
             ExecStartPre=/usr/bin/docker pull progrium/consul
-            ExecStart=/bin/sh -c "eval $(. /etc/environment; /usr/bin/docker run --rm progrium/consul cmd:run $COREOS_PRIVATE_IPV4 -e SERVICE_IGNORE=true -v /var/run/docker.sock:/var/run/docker.sock)"
+            ExecStart=/bin/sh -c "eval $(. /etc/environment; /usr/bin/docker run --rm -e EXPECT=${num_servers} progrium/consul cmd:run $COREOS_PRIVATE_IPV4 -e SERVICE_IGNORE=true -v /var/run/docker.sock:/var/run/docker.sock)"
             ExecStop=/usr/bin/docker stop consul
             [X-Fleet]
             MachineMetadata=consul_role=server
@@ -97,6 +107,38 @@ coreos:
                 -consul consul.service.consul:8500 \
                 -template /router/nginx.ctmpl:/etc/nginx/nginx.conf:/reload.sh"
             ExecStop=/usr/bin/docker stop consul-http-router
+        - name: omakase-docker-registry.service
+          command: start
+          content: |
+            [Unit]
+            Description=Private Docker Registry for Omakase
+            After=docker.service
+            After=etcd.service
+            After=consul-server.service
+
+            [Service]
+            Restart=always
+            RestartSec=60
+
+            EnvironmentFile=/etc/environment
+            ExecStartPre=-/usr/bin/docker kill registry
+            ExecStartPre=-/usr/bin/docker rm registry
+            ExecStartPre=/usr/bin/docker pull registry
+
+            ExecStart=/bin/sh -c "/usr/bin/docker run \
+              --rm \
+              -e SETTINGS_FLAVOR=s3 \
+              -e AWS_BUCKET=omakase-s3 \
+              -e STORAGE_PATH=/docker-registry \
+              -e AWS_KEY=${access_key} \
+              -e AWS_SECRET=${secret_key} \
+              -e SERVICE_NAME=ok-registry \
+              -e SERVICE_TAGS=http \
+              -P \
+              --name=registry \
+              registry"
+
+            ExecStop=/usr/bin/docker stop registry
 write_files:
     - path: /home/core/consul-http-router/nginx.ctmpl
       permissions: 0644
